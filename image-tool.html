@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frame Lab — Image Resize &amp; Convert</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#171512;
+    --panel:#1f1c17;
+    --panel-2:#26221c;
+    --line:#3a352c;
+    --paper:#F0EAE0;
+    --paper-dim:#b5ad9e;
+    --amber:#E8A33D;
+    --amber-dim:#8a641f;
+    --sage:#8CA888;
+    --rust:#C1502E;
+    --radius:2px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse at 20% -10%, rgba(232,163,61,0.07), transparent 45%),
+      var(--bg);
+    color:var(--paper);
+    font-family:'IBM Plex Sans', sans-serif;
+    min-height:100vh;
+    padding:48px 20px 80px;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}
+  }
+
+  .wrap{max-width:880px;margin:0 auto;}
+
+  header.hero{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    border-bottom:1px solid var(--line);
+    padding-bottom:20px;
+    margin-bottom:36px;
+    flex-wrap:wrap;
+    gap:16px;
+  }
+  .brand-eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.18em;
+    color:var(--amber);
+    text-transform:uppercase;
+    margin-bottom:8px;
+  }
+  h1{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:clamp(32px,5vw,46px);
+    margin:0;
+    line-height:1.02;
+    letter-spacing:-0.01em;
+  }
+  h1 em{color:var(--amber);font-style:normal;}
+  .hero-sub{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--paper-dim);
+    text-align:right;
+    line-height:1.6;
+    max-width:220px;
+  }
+
+  /* Dropzone: light table with film-frame corners */
+  .dropzone{
+    position:relative;
+    border:1px solid var(--line);
+    background:var(--panel);
+    border-radius:var(--radius);
+    padding:56px 24px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .2s ease, background .2s ease;
+  }
+  .dropzone:hover, .dropzone.drag{
+    border-color:var(--amber-dim);
+    background:var(--panel-2);
+  }
+  .dropzone .corner{
+    position:absolute;
+    width:16px;height:16px;
+    border:2px solid var(--amber-dim);
+    opacity:.6;
+  }
+  .dropzone .corner.tl{top:10px;left:10px;border-right:none;border-bottom:none;}
+  .dropzone .corner.tr{top:10px;right:10px;border-left:none;border-bottom:none;}
+  .dropzone .corner.bl{bottom:10px;left:10px;border-right:none;border-top:none;}
+  .dropzone .corner.br{bottom:10px;right:10px;border-left:none;border-top:none;}
+  .dz-icon{font-size:28px;margin-bottom:14px;color:var(--amber);}
+  .dz-title{font-family:'Fraunces',serif;font-size:19px;margin-bottom:6px;}
+  .dz-sub{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--paper-dim);}
+  input[type=file]{display:none;}
+
+  /* Editor */
+  .editor{display:none;margin-top:32px;}
+  .editor.active{display:block;}
+
+  .stage{
+    display:grid;
+    grid-template-columns:1.1fr 1fr;
+    gap:28px;
+  }
+  @media (max-width:720px){ .stage{grid-template-columns:1fr;} }
+
+  .preview-card{
+    border:1px solid var(--line);
+    background:var(--panel);
+    border-radius:var(--radius);
+    padding:16px;
+    display:flex;
+    flex-direction:column;
+  }
+  .preview-frame{
+    flex:1;
+    display:flex;align-items:center;justify-content:center;
+    background:
+      linear-gradient(45deg, #201d18 25%, transparent 25%),
+      linear-gradient(-45deg, #201d18 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #201d18 75%),
+      linear-gradient(-45deg, transparent 75%, #201d18 75%);
+    background-size:16px 16px;
+    background-position:0 0, 0 8px, 8px -8px, -8px 0px;
+    background-color:#141210;
+    border-radius:var(--radius);
+    min-height:280px;
+    overflow:hidden;
+  }
+  .preview-frame img{max-width:100%;max-height:420px;display:block;}
+
+  .readout{
+    display:flex;
+    justify-content:space-between;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--paper-dim);
+    margin-top:12px;
+    padding-top:12px;
+    border-top:1px dashed var(--line);
+  }
+  .readout b{color:var(--paper);font-weight:500;}
+  .readout .arrow{color:var(--amber);}
+
+  .controls{
+    border:1px solid var(--line);
+    background:var(--panel);
+    border-radius:var(--radius);
+    padding:22px;
+    display:flex;
+    flex-direction:column;
+    gap:22px;
+  }
+  .field-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--amber);
+    margin-bottom:10px;
+    display:block;
+  }
+
+  .fmt-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .fmt-btn{
+    flex:1;
+    min-width:70px;
+    padding:9px 6px;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--paper-dim);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    border-radius:var(--radius);
+    cursor:pointer;
+    transition:.15s ease;
+  }
+  .fmt-btn:hover{border-color:var(--amber-dim);color:var(--paper);}
+  .fmt-btn.active{
+    background:rgba(232,163,61,0.12);
+    border-color:var(--amber);
+    color:var(--amber);
+  }
+
+  .dim-row{display:flex;gap:10px;align-items:center;}
+  .dim-input{
+    flex:1;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--paper);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:14px;
+    padding:9px 10px;
+    border-radius:var(--radius);
+    width:100%;
+  }
+  .dim-input:focus{outline:none;border-color:var(--amber);}
+  .dim-x{color:var(--paper-dim);font-family:'IBM Plex Mono',monospace;}
+
+  .lock-row{
+    display:flex;align-items:center;gap:8px;
+    margin-top:10px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--paper-dim);
+    cursor:pointer;
+    user-select:none;
+  }
+  .lock-row input{accent-color:var(--amber);}
+
+  .slider-row{display:flex;align-items:center;gap:12px;}
+  input[type=range]{
+    flex:1;
+    accent-color:var(--amber);
+    height:4px;
+  }
+  .slider-val{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    color:var(--amber);
+    min-width:38px;
+    text-align:right;
+  }
+
+  .target-row{display:flex;gap:8px;align-items:center;}
+  .target-row .dim-input{flex:1;}
+  .unit-toggle{
+    display:flex;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .unit-toggle button{
+    padding:9px 12px;
+    background:var(--panel-2);
+    border:none;
+    color:var(--paper-dim);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    cursor:pointer;
+  }
+  .unit-toggle button.active{background:rgba(232,163,61,0.15);color:var(--amber);}
+
+  .hint{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--paper-dim);margin-top:6px;line-height:1.5;}
+
+  .actions{display:flex;gap:10px;margin-top:4px;flex-wrap:wrap;}
+  .btn{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    letter-spacing:0.03em;
+    padding:12px 18px;
+    border-radius:var(--radius);
+    border:1px solid var(--line);
+    background:var(--panel-2);
+    color:var(--paper);
+    cursor:pointer;
+    transition:.15s ease;
+    flex:1;
+  }
+  .btn.primary{
+    background:var(--amber);
+    border-color:var(--amber);
+    color:#1a1509;
+    font-weight:600;
+  }
+  .btn.primary:hover{background:#f0b158;}
+  .btn.ghost:hover{border-color:var(--paper-dim);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+
+  .status{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    color:var(--sage);
+    min-height:16px;
+  }
+  .status.err{color:var(--rust);}
+
+  footer{
+    text-align:center;
+    margin-top:44px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--paper-dim);
+    letter-spacing:.05em;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div>
+      <div class="brand-eyebrow">Frame Lab · 001</div>
+      <h1>Resize, convert,<br><em>download.</em></h1>
+    </div>
+    <div class="hero-sub">Sab kuch browser ke andar hota hai — koi bhi image server par upload nahi hoti.</div>
+  </header>
+
+  <div id="dropzone" class="dropzone">
+    <span class="corner tl"></span><span class="corner tr"></span>
+    <span class="corner bl"></span><span class="corner br"></span>
+    <div class="dz-icon">▚</div>
+    <div class="dz-title">Image yahan drop karo, ya click karke chuno</div>
+    <div class="dz-sub">JPG · PNG · WEBP · GIF · BMP supported</div>
+    <input type="file" id="fileInput" accept="image/*">
+  </div>
+
+  <div class="editor" id="editor">
+    <div class="stage">
+
+      <div class="preview-card">
+        <div class="preview-frame"><img id="previewImg" alt="Preview"></div>
+        <div class="readout">
+          <span>Original: <b id="origInfo">—</b></span>
+          <span class="arrow">→</span>
+          <span>Output: <b id="outInfo">—</b></span>
+        </div>
+      </div>
+
+      <div class="controls">
+
+        <div>
+          <label class="field-label">Format</label>
+          <div class="fmt-row" id="fmtRow">
+            <button class="fmt-btn active" data-fmt="image/jpeg">JPG</button>
+            <button class="fmt-btn" data-fmt="image/png">PNG</button>
+            <button class="fmt-btn" data-fmt="image/webp">WEBP</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="field-label">Dimensions (px)</label>
+          <div class="dim-row">
+            <input type="number" id="widthInput" class="dim-input" placeholder="Width">
+            <span class="dim-x">×</span>
+            <input type="number" id="heightInput" class="dim-input" placeholder="Height">
+          </div>
+          <label class="lock-row"><input type="checkbox" id="lockAspect" checked> Aspect ratio lock rakho</label>
+        </div>
+
+        <div>
+          <label class="field-label">Quality</label>
+          <div class="slider-row">
+            <input type="range" id="qualitySlider" min="1" max="100" value="85">
+            <span class="slider-val" id="qualityVal">85%</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="field-label">Target file size (optional)</label>
+          <div class="target-row">
+            <input type="number" id="targetSize" class="dim-input" placeholder="e.g. 200">
+            <div class="unit-toggle">
+              <button class="active" data-unit="KB">KB</button>
+              <button data-unit="MB">MB</button>
+            </div>
+          </div>
+          <div class="hint">Isse fill karoge to quality automatically adjust hokar target ke kareeb size layegi (JPG/WEBP par best kaam karta hai).</div>
+        </div>
+
+        <div class="actions">
+          <button class="btn ghost" id="resetBtn">Reset</button>
+          <button class="btn primary" id="downloadBtn">Download</button>
+        </div>
+        <div class="status" id="statusMsg"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>FRAME LAB — client-side image utility</footer>
+</div>
+
+<script>
+(function(){
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const editor = document.getElementById('editor');
+  const previewImg = document.getElementById('previewImg');
+  const origInfo = document.getElementById('origInfo');
+  const outInfo = document.getElementById('outInfo');
+  const fmtRow = document.getElementById('fmtRow');
+  const widthInput = document.getElementById('widthInput');
+  const heightInput = document.getElementById('heightInput');
+  const lockAspect = document.getElementById('lockAspect');
+  const qualitySlider = document.getElementById('qualitySlider');
+  const qualityVal = document.getElementById('qualityVal');
+  const targetSize = document.getElementById('targetSize');
+  const unitToggle = document.querySelectorAll('.unit-toggle button');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const statusMsg = document.getElementById('statusMsg');
+
+  let img = new Image();
+  let originalW = 0, originalH = 0, aspect = 1;
+  let originalBytes = 0;
+  let originalName = 'image';
+  let currentFormat = 'image/jpeg';
+  let sizeUnit = 'KB';
+  let debounceTimer = null;
+
+  function fmtBytes(bytes){
+    if(bytes < 1024) return bytes + ' B';
+    if(bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+    return (bytes/(1024*1024)).toFixed(2) + ' MB';
+  }
+
+  function resetUI(){
+    widthInput.value = '';
+    heightInput.value = '';
+    qualitySlider.value = 85;
+    qualityVal.textContent = '85%';
+    targetSize.value = '';
+    statusMsg.textContent = '';
+    statusMsg.className = 'status';
+    editor.classList.remove('active');
+    dropzone.style.display = '';
+    fileInput.value = '';
+  }
+  resetBtn.addEventListener('click', resetUI);
+
+  function loadFile(file){
+    if(!file || !file.type.startsWith('image/')){
+      statusMsg.textContent = 'Yeh file image nahi hai.';
+      statusMsg.className = 'status err';
+      return;
+    }
+    originalBytes = file.size;
+    originalName = (file.name || 'image').replace(/\.[^.]+$/, '');
+    const reader = new FileReader();
+    reader.onload = function(e){
+      img = new Image();
+      img.onload = function(){
+        originalW = img.naturalWidth;
+        originalH = img.naturalHeight;
+        aspect = originalW / originalH;
+        widthInput.value = originalW;
+        heightInput.value = originalH;
+        origInfo.textContent = originalW + '×' + originalH + 'px · ' + fmtBytes(originalBytes);
+        dropzone.style.display = 'none';
+        editor.classList.add('active');
+        render();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  dropzone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', e => loadFile(e.target.files[0]));
+
+  ['dragenter','dragover'].forEach(ev => {
+    dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add('drag'); });
+  });
+  ['dragleave','drop'].forEach(ev => {
+    dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove('drag'); });
+  });
+  dropzone.addEventListener('drop', e => {
+    const file = e.dataTransfer.files[0];
+    if(file) loadFile(file);
+  });
+
+  fmtRow.addEventListener('click', e => {
+    const btn = e.target.closest('.fmt-btn');
+    if(!btn) return;
+    fmtRow.querySelectorAll('.fmt-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFormat = btn.dataset.fmt;
+    render();
+  });
+
+  widthInput.addEventListener('input', () => {
+    if(lockAspect.checked && widthInput.value){
+      heightInput.value = Math.round(parseInt(widthInput.value) / aspect);
+    }
+    scheduleRender();
+  });
+  heightInput.addEventListener('input', () => {
+    if(lockAspect.checked && heightInput.value){
+      widthInput.value = Math.round(parseInt(heightInput.value) * aspect);
+    }
+    scheduleRender();
+  });
+
+  qualitySlider.addEventListener('input', () => {
+    qualityVal.textContent = qualitySlider.value + '%';
+    scheduleRender();
+  });
+
+  targetSize.addEventListener('input', scheduleRender);
+  unitToggle.forEach(btn => {
+    btn.addEventListener('click', () => {
+      unitToggle.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      sizeUnit = btn.dataset.unit;
+      scheduleRender();
+    });
+  });
+
+  function scheduleRender(){
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(render, 200);
+  }
+
+  function drawToCanvas(w, h){
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if(currentFormat === 'image/jpeg'){
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0,0,w,h);
+    }
+    ctx.drawImage(img, 0, 0, w, h);
+    return canvas;
+  }
+
+  function canvasToBlob(canvas, format, quality){
+    return new Promise(resolve => {
+      canvas.toBlob(blob => resolve(blob), format, quality);
+    });
+  }
+
+  let lastBlob = null;
+  let renderToken = 0;
+
+  async function render(){
+    if(!originalW) return;
+    const myToken = ++renderToken;
+    const w = Math.max(1, parseInt(widthInput.value) || originalW);
+    const h = Math.max(1, parseInt(heightInput.value) || originalH);
+    const canvas = drawToCanvas(w, h);
+    const supportsQuality = currentFormat !== 'image/png';
+    let quality = qualitySlider.value / 100;
+
+    const targetVal = parseFloat(targetSize.value);
+    statusMsg.className = 'status';
+
+    if(targetVal && supportsQuality){
+      statusMsg.textContent = 'Target size ke liye adjust ho raha hai…';
+      const targetBytes = sizeUnit === 'MB' ? targetVal * 1024 * 1024 : targetVal * 1024;
+      let lo = 0.02, hi = 1.0, best = null;
+      for(let i = 0; i < 8; i++){
+        const mid = (lo + hi) / 2;
+        const blob = await canvasToBlob(canvas, currentFormat, mid);
+        if(myToken !== renderToken) return;
+        if(!blob) break;
+        if(blob.size > targetBytes){
+          hi = mid;
+        } else {
+          best = blob;
+          lo = mid;
+        }
+      }
+      lastBlob = best || await canvasToBlob(canvas, currentFormat, lo);
+      if(myToken !== renderToken) return;
+      statusMsg.textContent = 'Target ke kareeb adjust ho gaya.';
+    } else {
+      if(targetVal && !supportsQuality){
+        statusMsg.textContent = 'PNG mein target size kaam nahi karta — quality slider ya JPG/WEBP try karo.';
+      } else {
+        statusMsg.textContent = '';
+      }
+      lastBlob = await canvasToBlob(canvas, currentFormat, quality);
+    }
+    if(myToken !== renderToken || !lastBlob) return;
+
+    const url = URL.createObjectURL(lastBlob);
+    previewImg.src = url;
+    outInfo.textContent = w + '×' + h + 'px · ' + fmtBytes(lastBlob.size);
+  }
+
+  downloadBtn.addEventListener('click', async () => {
+    if(!lastBlob){
+      await render();
+    }
+    if(!lastBlob) return;
+    const ext = currentFormat === 'image/jpeg' ? 'jpg' : currentFormat === 'image/png' ? 'png' : 'webp';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(lastBlob);
+    a.download = originalName + '-edited.' + ext;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  });
+
+})();
+</script>
+</body>
+</html>
